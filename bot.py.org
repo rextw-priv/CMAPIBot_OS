@@ -1,0 +1,135 @@
+import os
+import logging
+import json
+import math
+import re
+import random
+import ast
+import requests
+
+from aiotg import Bot, chat
+from database import db, text_search, text_delete
+
+greeting = """
+"""
+
+help = """
+"""
+
+not_found = """
+找不到資料 :/
+"""
+
+global host
+host = 'https://cm.rext.ga/api'
+
+bot = Bot(
+    api_token=os.environ.get('API_TOKEN'),
+    name=os.environ.get('BOT_NAME'),
+    botan_token=os.environ.get("BOTAN_TOKEN")
+)
+logger = logging.getLogger("musicbot")
+channel = bot.channel(os.environ.get('CHANNEL'))
+logChannelID = os.environ.get("LOGCHN_ID")
+
+async def getAdmin(ID=logChannelID):
+    raw = ast.literal_eval(str(await bot.api_call("getChatAdministrators",chat_id=ID)))
+    i=0
+    adminDict = []
+    while i < len(raw['result']):
+        if 'last_name' in raw['result'][i]['user']:
+            adminDict.append({
+            'id':raw['result'][i]['user']['id'],
+            'username':raw['result'][i]['user']['username'],
+            'first_name':raw['result'][i]['user']['first_name'],
+            'last_name':raw['result'][i]['user']['last_name']})
+        else:
+            adminDict.append({
+            'id':raw['result'][i]['user']['id'],
+            'username':raw['result'][i]['user']['username'],
+            'first_name':raw['result'][i]['user']['first_name'],
+            'last_name':''})
+        i += 1
+    return adminDict
+
+async def isAdmin(ID):
+    i=0
+    adminList = await getAdmin()
+    while i<len(adminList):
+        if adminList[i]['id'] == ID:
+            return 1
+        i += 1
+    return 0
+
+async def search_tracks(ID, bitrate):
+    global host
+    bitrate = bitrate * 1000
+    musicJson = await json.loads(await requests.get(host +'/'+ ID +'/'+ str(bitrate)).json())
+    await musicJson.setdefault('URL', host +'/'+ ID +'/'+ bitrate +'/'+ await musicJson['sign'])
+    return await musicJson
+
+@bot.command(r'/admin')
+async def admin(chat, match):
+    if not await isAdmin(chat.sender['id']):
+        logger.info("%s 查詢了管理員名單，遭到拒絕。", str(chat.sender))
+        await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了管理員名單，遭到拒絕。')
+        await chat.send_text("存取遭拒。")
+        return
+    else:
+        logger.info("%s 查詢了管理員名單", str(chat.sender))
+        await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了管理員名單')
+        raw = await getAdmin()
+        adminStr=''
+        i=0
+        while i<len(raw):
+            adminStr += raw[i]['first_name']+' '+raw[i]['last_name']+'\n'
+            i += 1
+        await chat.send_text(adminStr)
+
+@bot.default
+async def default(chat, message):
+    info = message['text'].split(' ')
+    if not len(info) == 2
+        chat.send_text('未輸入音樂網址/ID 或音質!')
+        return
+    else if not info[1] == 128 or info[1] == 192 or info[1] == 320:
+        chat.send_text('音質錯誤!')
+    else if info[0].isnumeric():
+        musicId = info[0]
+    else if "//music.163.com/" in info[0]:
+        musicId = ''.join(i for i in info[0].split('id=')[1] if i.isdigit())
+    else:
+        chat.send_text('輸入錯誤，無法解析!')
+        return
+    musicJson = await search_tracks(musicId, info[1])
+    musicArtistText = ''
+    for i in range(0,len(await musicJson['song']['artist'])):
+        await musicArtistText.join('[' + await musicJson['song']['artist'][i]['name']+ ']' + '(http://music.163.com/#/artist?id=' + await musicJson['song']['artist'][i]['id'] + ' "' + await musicJson['song']['artist'][i]['name'] + '") / ')
+    musicArtistText = await musicArtistText[:-3]
+    musicInfo = "曲名:" + await musicJson['song']['name'] + "\n歌手:" + await musicArtistText + "\n解析網址:" + await musicJson['URL']
+    return chat.send_text(await musicInfo, parse_mode='Markdown')
+
+@bot.command(r'/start')
+async def start(chat, match):
+    tuid = chat.sender["id"]
+    if not (await db.users.find_one({ "id": tuid })):
+        logger.info("新用戶 %s", chat.sender)
+        await bot.send_message(logChannelID,"新用戶 " + str(chat.sender))
+        await db.users.insert(chat.sender.copy())
+
+    await chat.send_text(greeting, parse_mode='Markdown')
+
+
+@bot.command(r'/stop')
+async def stop(chat, match):
+    tuid = chat.sender["id"]
+    await db.users.remove({ "id": tuid })
+
+    logger.info("%s 退出了", chat.sender)
+    await bot.send_message(logChannelID,str(chat.sender) + " 退出了")
+    await chat.send_text("掰掰! 😢")
+
+
+@bot.command(r'/help')
+def usage(chat, match):
+    return chat.send_text(help, parse_mode='Markdown')
