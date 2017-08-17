@@ -5,7 +5,6 @@ import json
 import math
 import random
 import ast
-import requests
 import aiohttp
 import asyncio
 import async_timeout
