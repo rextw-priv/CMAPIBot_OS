@@ -101,14 +101,15 @@ def getArtist(musicJson):
         musicArtistText += musicJson['song']['artist'][i]['name'] + ' / '
     return {'markdown' : musicArtistMD[:-3], 'text' : musicArtistText[:-3]}
 
-def inlineRes(query, music, caption=''):
+def inlineRes(queryORG, music, caption=''):
+    query = ''.join(i for i in queryORG if i.isalnum())
     global seed
     seed = query + str(random.randint(0, 9999999))
     random.seed(query + str(random.randint(0, 9999999)))
 
     results = {
         'type': 'audio',
-        'id': query + str(random.randint(0, 99)),
+        'id': query + str(random.randint(0, 9999)),
         'title' : music['song']['name'],
         'audio_url': music['URL'],
         'performer': getArtist(music)['text'],
@@ -201,32 +202,32 @@ async def inline(iq):
     info = iq.query.split(' ')
 
     if len(info) != 2:
-        logger.info("%s 未輸入正確的查詢參數。", str(iq.sender))
+        logger.info("[inline] %s 未輸入正確的查詢參數。", str(iq.sender))
         await iq.answer([])
-        await bot.send_message(logChannelID, str(iq.sender) + ' 未輸入正確的查詢參數。')
+        await bot.send_message('[inline] ' + logChannelID, str(iq.sender) + ' 未輸入正確的查詢參數。')
         return
 
     music, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
-        logger.info("%s 輸入了錯誤的音質。", str(iq.sender))
+        logger.info("[inline] %s 輸入了錯誤的音質。", str(iq.sender))
         await iq.answer([])
-        await bot.send_message(logChannelID, str(iq.sender) + ' 輸入了錯誤的音質。')
+        await bot.send_message('[inline] ' + logChannelID, str(iq.sender) + ' 輸入了錯誤的音質。')
         return
 
     if music.isnumeric():
         musicId = music
     elif '//music.163.com/' in music:
-        musicId = ''.join(i for i in info[0].split('id=')[1] if i.isdigit())
+        musicId = ''.join(i for i in music.split('id=')[1] if i.isdigit())
     else:
-        logger.info("%s 輸入了錯誤的音樂網址或 ID。", str(iq.sender))
+        logger.info("[inline] %s 輸入了錯誤的音樂網址或 ID。", str(iq.sender))
         await iq.answer([])
-        await bot.send_message(logChannelID, str(iq.sender) + ' 的查詢發生了未知的錯誤。')
+        await bot.send_message('[inline] ' + logChannelID, str(iq.sender) + ' 的查詢發生了未知的錯誤。')
         return
 
     musicJson = await search_tracks(musicId, bitrate)
     musicArtist = getArtist(musicJson)
 
     await iq.answer([inlineRes(iq.query, musicJson)])
-    logger.info("%s 查詢了 %skbps 的 %s - %s", str(iq.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
-    await bot.send_message(logChannelID, str(iq.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
+    logger.info("[inline] %s 查詢了 %skbps 的 %s - %s", str(iq.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
+    await bot.send_message('[inline] ' + logChannelID, str(iq.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
