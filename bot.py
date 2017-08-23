@@ -79,7 +79,7 @@ async def fetch(session, url):
         async with session.get(url) as response:
             return await response.text()
 
-def idGen(size=random.randint(0,100), charSettings='ad'):
+def idGen(sizeSettings=random.randint(5,64), charSettings='adm'):
     chars = ''
     if 'a' in charSettings:
         chars += string.ascii_letters
@@ -91,6 +91,13 @@ def idGen(size=random.randint(0,100), charSettings='ad'):
         chars += string.digits
     if 'm' in charSettings:
         chars += string.punctuation
+
+    if ',' in sizeSettings:
+        sizeRange1, sizeRange2 = sizeSettings.split(',')
+        size = random.randint(sizeRange1, sizeRange2)
+    elif sizeSettings.isnumeric:
+        size = sizeSettings
+
     return ''.join(random.choice(chars) for _ in range(size))
 
 async def getJSON(URL, verify_ssl=False):
@@ -116,12 +123,10 @@ def getArtist(musicJson):
         musicArtistText += musicJson['song']['artist'][i]['name'] + ' / '
     return {'markdown' : musicArtistMD[:-3], 'text' : musicArtistText[:-3]}
 
-def inlineRes(queryORG, music, caption=''):
-    query = ''.join(i for i in queryORG if i.isalnum())
-
+def inlineRes(music, caption=''):
     results = {
         'type': 'audio',
-        'id': query + idGen(),
+        'id': idGen(),
         'title' : music['song']['name'],
         'audio_url': music['URL'],
         'performer': getArtist(music)['text'],
@@ -246,6 +251,6 @@ async def inline(iq):
     musicJson = await search_tracks(musicId, bitrate)
     musicArtist = getArtist(musicJson)
 
-    await iq.answer([inlineRes(iq.query, musicJson)])
+    await iq.answer([inlineRes(musicJson)])
     logger.info("[inline] %s 查詢了 %skbps 的 %s - %s", str(iq.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
     await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
