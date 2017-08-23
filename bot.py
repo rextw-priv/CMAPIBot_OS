@@ -9,6 +9,7 @@ import aiohttp
 import asyncio
 import async_timeout
 import ssl
+import string
 from aiotg import Bot, chat
 
 greeting = """
@@ -78,6 +79,9 @@ async def fetch(session, url):
         async with session.get(url) as response:
             return await response.text()
 
+def idGen(size=random.randint(0,100), chars=string.ascii_letters + string.digits + string.punctuation):
+    return ''.join(random.choice(chars) for _ in range(size))
+
 async def getJSON(URL, verify_ssl=False):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=verify_ssl)) as session:
         data = await fetch(session, URL)
@@ -103,13 +107,10 @@ def getArtist(musicJson):
 
 def inlineRes(queryORG, music, caption=''):
     query = ''.join(i for i in queryORG if i.isalnum())
-    global seed
-    seed = query + str(random.randint(0, 9999999))
-    random.seed(query + str(random.randint(0, 9999999)))
 
     results = {
         'type': 'audio',
-        'id': query + str(random.randint(0, 9999)),
+        'id': query + idGen(),
         'title' : music['song']['name'],
         'audio_url': music['URL'],
         'performer': getArtist(music)['text'],
@@ -117,6 +118,16 @@ def inlineRes(queryORG, music, caption=''):
     }
 
     return results
+
+def getMusicId(musicInfo):
+    if musicInfo.isnumeric():
+        return musicInfo
+    elif "//music.163.com/song/" in musicInfo:
+        return musicInfo.split['//music.163.com/song/'][1].split['/'][0]
+    elif "//music.163.com/#/song?id=" in musicInfo:
+        return ''.join(i for i in musicInfo.split('id=')[1] if i.isdigit())
+    else:
+        return 'ERROR'
 
 @bot.command(r'/admin')
 async def admin(chat, match):
@@ -148,28 +159,27 @@ async def default(chat, message):
         await bot.send_message(logChannelID, str(chat.sender) + ' 未輸入正確的查詢參數。')
         return
 
-    if info[1] not in ['128', '192', '320']:
+    musicInfo, bitrate = info
+
+    if bitrate not in ['128', '192', '320']:
         chat.send_text('音質錯誤!')
         logger.info("%s 輸入了錯誤的音質。", str(chat.sender))
         await bot.send_message(logChannelID, str(chat.sender) + ' 輸入了錯誤的音質。')
         return
 
-    if info[0].isnumeric():
-        musicId = info[0]
-    elif "//music.163.com/" in info[0]:
-        musicId = ''.join(i for i in info[0].split('id=')[1] if i.isdigit())
-    else:
+    musicId = getMusicId(musicInfo)
+    if not musicId.isnumeric():
         chat.send_text('輸入錯誤，無法解析!')
         logger.info("%s 的查詢發生了未知的錯誤。", str(chat.sender))
         await bot.send_message(logChannelID, str(chat.sender) + ' 的查詢發生了未知的錯誤。')
         return
 
-    musicJson = await search_tracks(musicId, info[1])
+    musicJson = await search_tracks(musicId, bitrate)
     musicArtist = getArtist(musicJson)
-    musicInfoMD = "曲名:" + musicJson['song']['name'] + "\n歌手:" + musicArtist['markdown'] + "\n[解析網址](" + musicJson['URL'] +")"
+    musicInfoMD = "曲名:" + musicJson['song']['name'] + "\n歌手:" + musicArtist['markdown'] + "\n\n[解析網址](" + musicJson['URL'] +")"
 
-    logger.info("%s 查詢了 %skbps 的 %s - %s", str(chat.sender), str(info[1]), musicArtist['text'], musicJson['song']['name'])
-    await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了 ' + info[1] + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
+    logger.info("%s 查詢了 %skbps 的 %s - %s", str(chat.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
+    await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
 
     await chat.reply(musicInfoMD, parse_mode='Markdown')
     await chat.send_audio(audio=musicJson['URL'])
@@ -207,7 +217,7 @@ async def inline(iq):
         await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 未輸入正確的查詢參數。')
         return
 
-    music, bitrate = info
+    musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         logger.info("[inline] %s 輸入了錯誤的音質。", str(iq.sender))
@@ -215,11 +225,8 @@ async def inline(iq):
         await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 輸入了錯誤的音質。')
         return
 
-    if music.isnumeric():
-        musicId = music
-    elif '//music.163.com/' in music:
-        musicId = ''.join(i for i in music.split('id=')[1] if i.isdigit())
-    else:
+    musicId = getMusicId(musicInfo)
+    if not musicId.isnumeric:
         logger.info("[inline] %s 的查詢發生了未知的錯誤。", str(iq.sender))
         await iq.answer([])
         await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 的查詢發生了未知的錯誤。')
