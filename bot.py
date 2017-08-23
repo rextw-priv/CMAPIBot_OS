@@ -124,7 +124,7 @@ def getMusicId(musicInfo):
         return musicInfo
     elif "//music.163.com/song/" in musicInfo:
         return musicInfo.split['//music.163.com/song/'][1].split['/'][0]
-    elif "//music.163.com/#/song?id=" in musicInfo:
+    elif "song?id=" in musicInfo:
         return ''.join(i for i in musicInfo.split('id=')[1] if i.isdigit())
     else:
         return 'ERROR'
