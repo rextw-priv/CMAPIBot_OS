@@ -79,7 +79,18 @@ async def fetch(session, url):
         async with session.get(url) as response:
             return await response.text()
 
-def idGen(size=random.randint(0,100), chars=string.ascii_letters + string.digits + string.punctuation):
+def idGen(size=random.randint(0,100), charSettings='ad'):
+    chars = ''
+    if 'a' in charSettings:
+        chars += string.ascii_letters
+    if 'l' in charSettings:
+        chars += string.ascii_lowercase
+    if 'L' in charSettings:
+        chars += string.ascii_uppercase
+    if 'd' in charSettings:
+        chars += string.digits
+    if 'm' in charSettings:
+        chars += string.punctuation
     return ''.join(random.choice(chars) for _ in range(size))
 
 async def getJSON(URL, verify_ssl=False):
@@ -118,7 +129,7 @@ def inlineRes(queryORG, music, caption=''):
     }
 
     return results
-
+#http://music.163.com/song/33861246/?userid=18972123 320
 def getMusicId(musicInfo):
     if musicInfo.isnumeric():
         return musicInfo
