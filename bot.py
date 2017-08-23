@@ -92,12 +92,12 @@ def idGen(sizeSettings=random.randint(5,64), charSettings='adm'):
     if 'm' in charSettings:
         chars += string.punctuation
 
-    if ',' in sizeSettings:
+    if sizeSettings.isnumeric:
+        size = sizeSettings    
+    elif ',' in sizeSettings:
         sizeRange1, sizeRange2 = sizeSettings.split(',')
         size = random.randint(sizeRange1, sizeRange2)
-    elif sizeSettings.isnumeric:
-        size = sizeSettings
-
+    
     return ''.join(random.choice(chars) for _ in range(size))
 
 async def getJSON(URL, verify_ssl=False):
