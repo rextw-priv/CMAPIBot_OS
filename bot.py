@@ -93,9 +93,9 @@ def idGen(sizeSettings=random.randint(5,64), charSettings='adm'):
         chars += string.punctuation
 
     if sizeSettings.isnumeric:
-        size = sizeSettings    
+        size = sizeSettings
     elif ',' in str(sizeSettings):
-        sizeRange1, sizeRange2 = sizeSettings.split(',')
+        sizeRange1, sizeRange2 = str(sizeSettings).split(',')
         size = random.randint(sizeRange1, sizeRange2)
     
     return ''.join(random.choice(chars) for _ in range(size))
