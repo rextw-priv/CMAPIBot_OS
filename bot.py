@@ -45,39 +45,31 @@ bot = Bot(
 
 async def getAdmin(ID=logChannelID):
     raw = ast.literal_eval(str(await bot.api_call("getChatAdministrators",chat_id=ID)))
-    i=0
-    adminDict = []
-
-    while i < len(raw['result']):
-        if 'last_name' in raw['result'][i]['user']:
-            adminDict.append({
-            'id':raw['result'][i]['user']['id'],
-            'username':raw['result'][i]['user']['username'],
-            'first_name':raw['result'][i]['user']['first_name'],
-            'last_name':raw['result'][i]['user']['last_name']})
-        else:
-            adminDict.append({
-            'id':raw['result'][i]['user']['id'],
-            'username':raw['result'][i]['user']['username'],
-            'first_name':raw['result'][i]['user']['first_name'],
-            'last_name':''})
-        i += 1
+    adminDict = [{
+        'id':i['user']['id'],
+        'username':i['user']['username'],
+        'first_name':i['user']['first_name'],
+        'last_name':i['user']['last_name'] if 'last_name' in i['user'] else ''})
+    } for i in raw['result']]
     return adminDict
 
 async def isAdmin(ID):
-    i=0
     adminList = await getAdmin()
 
-    while i<len(adminList):
-        if adminList[i]['id'] == ID:
+    for i in adminList:
+        if i['id'] == ID:
             return True
-        i += 1
     return False
 
 async def fetch(session, url):
     with async_timeout.timeout(10):
         async with session.get(url) as response:
             return await response.text()
+
+async def log(string):
+    logger.info(string)
+    await bot.send_message(logChannelID, string)
+    return
 
 def idGen(sizeSettings=random.randint(5,64), charSettings='adm'):
     chars = ''
@@ -118,10 +110,10 @@ async def search_tracks(ID, bitrate):
 def getArtist(musicJson):
     musicArtistMD = ''
     musicArtistText = ''
-
-    for i in range(0,len(musicJson['song']['artist'])):
-        musicArtistMD += ('[' + musicJson['song']['artist'][i]['name']+ ']' + '(http://music.163.com/#/artist?id=' + str(musicJson['song']['artist'][i]['id']) + ') / ')
-        musicArtistText += musicJson['song']['artist'][i]['name'] + ' / '
+    
+    for i in musicJson['song']['artist']:
+        musicArtistMD += ('[' + i['name']+ ']' + '(http://music.163.com/#/artist?id=' + str(i['id']) + ') / ')
+        musicArtistText += i['name'] + ' / '
     return {'markdown' : musicArtistMD[:-3], 'text' : musicArtistText[:-3]}
 
 def inlineRes(music, caption=''):
@@ -149,20 +141,13 @@ def getMusicId(musicInfo):
 @bot.command(r'/admin')
 async def admin(chat, match):
     if not await isAdmin(chat.sender['id']):
-        logger.info("%s 查詢了管理員名單，遭到拒絕。", str(chat.sender))
-        await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了管理員名單，遭到拒絕。')
+        await log("{} 查詢了管理員名單，遭到拒絕。".format(chat.sender))
         await chat.send_text("存取遭拒。")
         return
     else:
-        logger.info("%s 查詢了管理員名單", str(chat.sender))
-        await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了管理員名單')
+        await log("{} 查詢了管理員名單".format(chat.sender))
         raw = await getAdmin()
-
-        adminStr = ''
-        i = 0
-        while i < len(raw):
-            adminStr += raw[i]['first_name']+' '+raw[i]['last_name']+'\n'
-            i += 1
+        adminStr = ''.join(i['first_name']+' '+i['last_name']+'\n' for i in raw)
         await chat.send_text(adminStr)
         return
 
@@ -171,32 +156,26 @@ async def default(chat, message):
     info = message['text'].split(' ')
     musicId = ''
     if len(info) != 2:
-        chat.send_text('未輸入音樂網址/ID 或音質!')
-        logger.info("%s 未輸入正確的查詢參數。", str(chat.sender))
-        await bot.send_message(logChannelID, str(chat.sender) + ' 未輸入正確的查詢參數。')
-        return
+        info.append('320')
 
     musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         chat.send_text('音質錯誤!')
-        logger.info("%s 輸入了錯誤的音質。", str(chat.sender))
-        await bot.send_message(logChannelID, str(chat.sender) + ' 輸入了錯誤的音質。')
+        await log("{} 輸入了錯誤的音質。".format(chat.sender))
         return
 
     musicId = getMusicId(musicInfo)
     if not musicId.isnumeric():
         chat.send_text('輸入錯誤，無法解析!')
-        logger.info("%s 的查詢發生了未知的錯誤。", str(chat.sender))
-        await bot.send_message(logChannelID, str(chat.sender) + ' 的查詢發生了未知的錯誤。')
+        await log("{} 的查詢發生了未知的錯誤。".format(chat.sender))
         return
 
     musicJson = await search_tracks(musicId, bitrate)
     musicArtist = getArtist(musicJson)
-    musicInfoMD = "曲名:" + musicJson['song']['name'] + "\n歌手:" + musicArtist['markdown'] + "\n\n[解析網址](" + musicJson['URL'] +")"
+    musicInfoMD = "曲名:{}\n歌手:{}\n\n[解析網址]({})".format(musicJson['song']['name'], musicArtist['markdown'], musicJson['URL'])
 
-    logger.info("%s 查詢了 %skbps 的 %s - %s", str(chat.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
-    await bot.send_message(logChannelID, str(chat.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
+    await log("{} 查詢了 {}kbps 的 {} - {}".format(chat.sender, bitrate, musicArtist['text'], musicJson['song']['name']))
 
     await chat.reply(musicInfoMD, parse_mode='Markdown')
     await chat.send_audio(audio=musicJson['URL'])
@@ -212,8 +191,7 @@ async def stop(chat, match):
     tuid = chat.sender["id"]
     await db.users.remove({ "id": tuid })
 
-    logger.info("%s 退出了", chat.sender)
-    await bot.send_message(logChannelID, str(chat.sender) + " 退出了")
+    await log("{} 退出了".format(chat.sender))
     await chat.send_text(bye, parse_mode='Markdown')
 
 
@@ -229,29 +207,23 @@ async def inline(iq):
     info = iq.query.split(' ')
 
     if len(info) != 2:
-        logger.info("[inline] %s 未輸入正確的查詢參數。", str(iq.sender))
-        await iq.answer([])
-        await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 未輸入正確的查詢參數。')
-        return
+        info.append('320')
 
     musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
-        logger.info("[inline] %s 輸入了錯誤的音質。", str(iq.sender))
+        await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
         await iq.answer([])
-        await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 輸入了錯誤的音質。')
         return
 
     musicId = getMusicId(musicInfo)
     if not musicId.isnumeric:
-        logger.info("[inline] %s 的查詢發生了未知的錯誤。", str(iq.sender))
+        await log("[inline] {} 的查詢發生了未知的錯誤。".format(iq.sender))
         await iq.answer([])
-        await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 的查詢發生了未知的錯誤。')
         return
 
     musicJson = await search_tracks(musicId, bitrate)
     musicArtist = getArtist(musicJson)
 
     await iq.answer([inlineRes(musicJson)])
-    logger.info("[inline] %s 查詢了 %skbps 的 %s - %s", str(iq.sender), str(bitrate), musicArtist['text'], musicJson['song']['name'])
-    await bot.send_message(logChannelID, '[inline] ' + str(iq.sender) + ' 查詢了 ' + bitrate + 'kbps 的 '+ musicArtist['text'] +' - '+ musicJson['song']['name'])
+    await log("[inline] {} 查詢了 {}kbps 的 {} - {}".format(iq.sender, bitrate, musicArtist['text'], musicJson['song']['name']))
