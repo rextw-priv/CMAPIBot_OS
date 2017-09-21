@@ -19,10 +19,10 @@ greeting = """
 """
 
 help = """
-輸入 `音樂網址 音質` 來解析
-例如 : `http://music.163.com/#/m/song?id=31587429 320`
-或 `音樂ID 音質`
-例如 : `31587429 320`
+輸入 `音樂網址 #音質` 來解析
+例如 : `http://music.163.com/#/m/song?id=31587429 #320`
+或 `音樂ID #音質`
+例如 : `31587429 #320`
 """
 
 not_found = """
@@ -153,8 +153,7 @@ async def admin(chat, match):
 
 @bot.default
 async def default(chat, message):
-    info = message['text'].replace(' (', '(').split(' ')
-    musicInfo, bitrate = info
+    musicInfo, bitrate = message['text'].split(' #')
 
     if bitrate not in ['128', '192', '320']:
         chat.send_text('音質錯誤!將音質設為 320kbps。')
@@ -200,9 +199,7 @@ async def inline(iq):
     if not iq.query:
         return await iq.answer([])
 
-    info = iq.query.replace(' (', '(').split(' ')
-
-    musicInfo, bitrate = info
+    musicInfo, bitrate = iq.query.split(' #')
 
     if bitrate not in ['128', '192', '320']:
         await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
