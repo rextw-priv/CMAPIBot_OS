@@ -153,8 +153,7 @@ async def admin(chat, match):
 
 @bot.default
 async def default(chat, message):
-    info = message['text'].split(' ')
-
+    info = message['text'].replace(' (', '(').split(' ')
     musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
@@ -201,7 +200,7 @@ async def inline(iq):
     if not iq.query:
         return await iq.answer([])
 
-    info = iq.query.split(' ')
+    info = iq.query.replace(' (', '(').split(' ')
 
     musicInfo, bitrate = info
 
