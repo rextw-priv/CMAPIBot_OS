@@ -156,7 +156,8 @@ async def default(chat, message):
     info = message['text'].split(' #')
     if len(info) != 2:
         musicInfo = info[0]
-    else musicInfo, bitrate = info
+    else:
+        musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         chat.send_text('音質錯誤!將音質設為 320kbps。')
@@ -205,7 +206,8 @@ async def inline(iq):
     info = iq.query.split(' #')
     if len(info) != 2:
         musicInfo = info[0]
-    else musicInfo, bitrate = info
+    else:
+        musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
