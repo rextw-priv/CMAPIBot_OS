@@ -157,7 +157,7 @@ async def default(chat, message):
 
     if len(info) != 2:
         musicInfo = info[0]
-        birtate = ''
+        bitrate = ''
     else:
         musicInfo, bitrate = info
 
@@ -208,7 +208,7 @@ async def inline(iq):
     info = iq.query.split(' #')
     if len(info) != 2:
         musicInfo = info[0]
-        birtate = ''
+        bitrate = ''
     else:
         musicInfo, bitrate = info
 
