@@ -127,7 +127,7 @@ def inlineRes(music, caption=''):
     }
 
     return results
-#http://music.163.com/song/33861246/?userid=18972123 320
+
 def getMusicId(musicInfo):
     if musicInfo.isnumeric():
         return musicInfo
@@ -153,7 +153,10 @@ async def admin(chat, match):
 
 @bot.default
 async def default(chat, message):
-    musicInfo, bitrate = message['text'].split(' #')
+    info = message['text'].split(' #')
+    if len(info) != 2:
+        musicInfo = info[0]
+    else musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         chat.send_text('音質錯誤!將音質設為 320kbps。')
@@ -198,8 +201,11 @@ async def usage(chat, match):
 async def inline(iq):
     if not iq.query:
         return await iq.answer([])
-
-    musicInfo, bitrate = iq.query.split(' #')
+    
+    info = iq.query.split(' #')
+    if len(info) != 2:
+        musicInfo = info[0]
+    else musicInfo, bitrate = info
 
     if bitrate not in ['128', '192', '320']:
         await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
