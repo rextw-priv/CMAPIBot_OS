@@ -49,7 +49,7 @@ async def getAdmin(ID=logChannelID):
         'id':i['user']['id'],
         'username':i['user']['username'],
         'first_name':i['user']['first_name'],
-        'last_name':i['user']['last_name'] if 'last_name' in i['user'] else ''})
+        'last_name':i['user']['last_name'] if 'last_name' in i['user'] else ''
     } for i in raw['result']]
     return adminDict
 
