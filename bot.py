@@ -154,8 +154,10 @@ async def admin(chat, match):
 @bot.default
 async def default(chat, message):
     info = message['text'].split(' #')
+
     if len(info) != 2:
         musicInfo = info[0]
+        birtate = ''
     else:
         musicInfo, bitrate = info
 
@@ -206,6 +208,7 @@ async def inline(iq):
     info = iq.query.split(' #')
     if len(info) != 2:
         musicInfo = info[0]
+        birtate = ''
     else:
         musicInfo, bitrate = info
 
