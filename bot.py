@@ -71,7 +71,7 @@ async def log(string):
     await bot.send_message(logChannelID, string)
     return
 
-def idGen(sizeSettings=random.randint(5,64), charSettings='adm'):
+def idGen(sizeSettings=random.randint(5,64), charSettings='ad'):
     chars = ''
     if 'a' in charSettings:
         chars += string.ascii_letters
@@ -125,7 +125,6 @@ def inlineRes(music, caption=''):
         'performer': getArtist(music)['text'],
         'caption': caption
     }
-
     return results
 
 def getMusicId(musicInfo):
@@ -156,8 +155,7 @@ async def default(chat, message):
     info = message['text'].split(' #')
 
     if len(info) != 2:
-        musicInfo = info[0]
-        bitrate = ''
+        musicInfo, bitrate = info[0], ''
     else:
         musicInfo, bitrate = info
 
@@ -179,7 +177,35 @@ async def default(chat, message):
     await log("{} 查詢了 {}kbps 的 {} - {}".format(chat.sender, bitrate, musicArtist['text'], musicJson['song']['name']))
 
     await chat.reply(musicInfoMD, parse_mode='Markdown')
-    await chat.send_audio(audio=musicJson['URL'])
+    await chat.send_audio(audio=musicJson['URL'], title=musicJson['song']['name'], performer=musicArtist['text'])
+    return
+
+@bot.inline
+async def inline(iq):
+    if not iq.query:
+        return await iq.answer([])
+    
+    info = iq.query.split(' #')
+    if len(info) != 2:
+        musicInfo, bitrate = info[0], ''
+    else:
+        musicInfo, bitrate = info
+
+    if bitrate not in ['128', '192', '320']:
+        await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
+        bitrate = '320'
+
+    musicId = getMusicId(musicInfo)
+    if not musicId.isnumeric:
+        await log("[inline] {} 的查詢發生了未知的錯誤。".format(iq.sender))
+        await iq.answer([])
+        return
+
+    musicJson = await search_tracks(musicId, bitrate)
+    musicArtist = getArtist(musicJson)
+
+    await iq.answer([inlineRes(musicJson)])
+    await log("[inline] {} 查詢了 {}kbps 的 {} - {}".format(iq.sender, bitrate, musicArtist['text'], musicJson['song']['name']))
     return
 
 @bot.command(r'/start')
@@ -199,31 +225,3 @@ async def stop(chat, match):
 @bot.command(r'/help')
 async def usage(chat, match):
     return await chat.send_text(help, parse_mode='Markdown')
-
-@bot.inline
-async def inline(iq):
-    if not iq.query:
-        return await iq.answer([])
-    
-    info = iq.query.split(' #')
-    if len(info) != 2:
-        musicInfo = info[0]
-        bitrate = ''
-    else:
-        musicInfo, bitrate = info
-
-    if bitrate not in ['128', '192', '320']:
-        await log("[inline] {} 輸入了錯誤的音質。".format(iq.sender))
-        bitrate = '320'
-
-    musicId = getMusicId(musicInfo)
-    if not musicId.isnumeric:
-        await log("[inline] {} 的查詢發生了未知的錯誤。".format(iq.sender))
-        await iq.answer([])
-        return
-
-    musicJson = await search_tracks(musicId, bitrate)
-    musicArtist = getArtist(musicJson)
-
-    await iq.answer([inlineRes(musicJson)])
-    await log("[inline] {} 查詢了 {}kbps 的 {} - {}".format(iq.sender, bitrate, musicArtist['text'], musicJson['song']['name']))
