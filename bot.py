@@ -14,15 +14,15 @@ from aiotg import Bot, chat
 
 greeting = """
 這是 Rex 的網易雲音樂解析 bot !
-是基於[網易雲音樂解析](https://cm.rext.ga)的服務。
+是基於[網易雲音樂解析]({}})的服務。
 使用方式參見 /help
-"""
+""".format(os.environ.get('HOST'))
 
 help = """
-輸入 `音樂網址 #音質` 來解析
-例如 : `http://music.163.com/#/m/song?id=31587429 #320`
-或 `音樂ID #音質`
-例如 : `31587429 #320`
+輸入 `音樂網址 .音質` 來解析
+例如 : `http://music.163.com/#/m/song?id=31587429 .320`
+或 `音樂ID .音質`
+例如 : `31587429 .320`
 """
 
 not_found = """
@@ -152,7 +152,7 @@ async def admin(chat, match):
 
 @bot.default
 async def default(chat, message):
-    info = message['text'].split(' #')
+    info = message['text'].split(' .')
 
     if len(info) != 2:
         musicInfo, bitrate = info[0], ''
@@ -185,7 +185,7 @@ async def inline(iq):
     if not iq.query:
         return await iq.answer([])
     
-    info = iq.query.split(' #')
+    info = iq.query.split(' .')
     if len(info) != 2:
         musicInfo, bitrate = info[0], ''
     else:

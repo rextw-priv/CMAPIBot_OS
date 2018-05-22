@@ -22,7 +22,7 @@ class RestBridge:
         global hostIp
         global hostPort
         loop = asyncio.get_event_loop()
-        srv = await loop.create_server(self.handler, os.environ.get('IP'), os.environ.get('PORT',8080))
+        srv = await loop.create_server(self.handler, os.environ.get('IP'), os.environ.get('PORT', 8080))
         logger.info('REST 執行中: %s', srv.sockets[0].getsockname())
         self.srv = srv
 
